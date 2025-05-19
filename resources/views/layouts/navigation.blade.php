@@ -21,6 +21,9 @@ use Illuminate\Support\Facades\Auth;
                      <x-nav-link :href="route('projects.index')" :active="request()->routeIs('projects.*')">
                         {{ __('Projects') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('excel.form')" :active="request()->routeIs('excel.*')">
+                        {{ __('Upload Excel Sheet') }}
+                    </x-nav-link>
                 </div>
             </div>
 

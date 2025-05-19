@@ -9,13 +9,14 @@ use App\Models\ExcelUpload;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\View;
 use Exception;
 
 class ExcelUploadController extends Controller
 {
     public function upload(Request $request)
     {
-        try{
+        try {
             $request->validate([
                 'file' => 'required|file|mimes:xlsx,xls'
             ]);
@@ -24,40 +25,45 @@ class ExcelUploadController extends Controller
             $filename = time() . '_' . $file->getClientOriginalName();
             $path = $file->storeAs('excel_uploads', $filename, 'public');
 
-
-            $data = Excel::toArray([], $file)[0]; 
-
-            
-            $headers = array_map('strtolower', $data[0]); 
+            $data = Excel::toArray([], $file)[0];
+            $headers = array_map('strtolower', $data[0]);
             $user = Auth::user();
+
+            $uploads = [];
 
             foreach (array_slice($data, 1) as $row) {
                 $rowData = array_combine($headers, $row);
 
                 $upload = ExcelUpload::create([
-                    'name'      => $rowData['name'] ?? null,
-                    'email'     => $rowData['email'] ?? null,
-                    'age'       => isset($rowData['age']) ? (int) $rowData['age'] : null,
+                    'name'        => $rowData['name'] ?? null,
+                    'email'       => $rowData['email'] ?? null,
+                    'age'         => isset($rowData['age']) ? (int) $rowData['age'] : null,
                     'uploaded_by' => $user ? $user->email : 'guest',
                 ]);
+
+                $uploads[] = $rowData;
             }
 
-
-            Mail::raw("Uploaded Excel Data:\n" . json_encode($data, JSON_PRETTY_PRINT), function ($message) {
-                $message->to('receiver@example.com')
-                        ->subject('Excel Upload Data');
+            // Send email to the logged-in user
+            Mail::send('emails.upload_summary', ['uploads' => $uploads], function ($message) use ($user) {
+                $message->to($user->email)
+                        ->subject('Your Uploaded Excel Data');
             });
 
-            return response()->json([
-                'message' => 'Excel uploaded, parsed, and emailed successfully.',
-                'file_id' => $upload->id,
-                'data_preview' => array_slice($data, 0, 5) 
+
+            // Return to a Blade view with success message
+            return view('excel.success', [
+                'fileName' => $filename,
+                'preview' => array_slice($uploads, 0, 5),
+                'email' => $user->email,
             ]);
-        }catch (Exception $e) {
-            return response()->json([
-                'error' => 'Upload failed: ' . $e->getMessage()
-            ], 500);
+        } catch (Exception $e) {
+            return back()->withErrors(['upload_error' => 'Upload failed: ' . $e->getMessage()]);
         }
     }
-}
 
+    public function showForm()
+    {
+        return view('excel.upload');
+    }
+}
