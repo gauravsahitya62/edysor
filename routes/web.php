@@ -24,6 +24,6 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::get('/excel-upload', [ExcelUploadController::class, 'showForm'])->name('excel.form');
-Route::post('/excel-upload', [ExcelUploadController::class, 'upload'])->name('excel.upload');
+Route::post('/excel-upload', [ExcelUploadController::class, 'uploadviauser'])->name('excel.upload');
 
 require __DIR__.'/auth.php';
